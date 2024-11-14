@@ -9,7 +9,6 @@ import { IoIosArrowDown } from "react-icons/io";
 import StyledText from "../components/styledText";
 import YouTube from "react-youtube";
 import { toast } from "react-toastify";
-import { logo, name } from "../constants";
 import axiosInstance from "../axios";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 import { FaCheck } from "react-icons/fa";
@@ -323,7 +322,7 @@ const Course = () => {
       const id = toast.loading("Please wait...");
 
       if (type === "video & text course") {
-        sendVideo(query, selectedTopics, selectedSub, id, mSubTopic.title);
+        sendVideo(query, selectedTopics, selectedSub, id,`${mSubTopic.title} related to ${mTopic.title}`);
       } else {
         const prompt = `Explain me about this subtopic of ${mTopic.title} with examples: ${mSubTopic.title}. Please strictly don't give additional resources and images.`;
         const promptImage = `Example of ${mSubTopic.title} in ${mTopic.title}`;
