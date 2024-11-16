@@ -9,7 +9,6 @@ import { IoIosArrowDown } from "react-icons/io";
 import StyledText from "../components/styledText";
 import YouTube from "react-youtube";
 import { toast } from "react-toastify";
-import { logo, name } from "../constants";
 import axiosInstance from "../axios";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 import { FaCheck } from "react-icons/fa";
@@ -328,7 +327,7 @@ const Course = () => {
       const id = toast.loading("Please wait...");
 
       if (type === "video & text course") {
-        sendVideo(query, selectedTopics, selectedSub, id, mSubTopic.title);
+        sendVideo(query, selectedTopics, selectedSub, id,`${mSubTopic.title} related to ${mTopic.title}`);
       } else {
         const prompt = `Explain me about this subtopic of ${mTopic.title} with examples: ${mSubTopic.title}. Please strictly don't give additional resources and images.`;
         const promptImage = `Example of ${mSubTopic.title} in ${mTopic.title}`;
@@ -600,57 +599,33 @@ const Course = () => {
         const postURL = "/api/transcript";
         const res = await axiosInstance.post(postURL, dataToSend);
 
-        // Process the response data
-        try {
-            const generatedText = res.data.url;
-            const allText = generatedText.map((item) => item.text);
-            const concatenatedText = allText.join(" ");
-            const prompt = `Summarize this theory in a teaching way, focusing on JavaScript: ${concatenatedText}.`;
-            await sendSummery(prompt, url, mTopic, mSubTopic, id);
-        } catch (error) {
-            console.warn(
-                "Error processing transcript response, retrying with fallback...",
-                error
-            );
-            const fallbackPrompt = `Explain the JavaScript function subtopic of ${mTopic} with examples: ${subtop}. Please strictly avoid additional resources and images.`;
-            if (retries > 0) {
-                await new Promise((resolve) => setTimeout(resolve, delay));
-                return sendTranscript(
-                    url,
-                    mTopic,
-                    mSubTopic,
-                    id,
-                    subtop,
-                    retries - 1,
-                    delay * 2
-                );
-            } else {
-                await sendSummery(fallbackPrompt, url, mTopic, mSubTopic, id);
-            }
-        }
+    // Process the response data
+    try {
+      const generatedText = res.data.url;
+      const allText = generatedText.map((item) => item.text);
+      const concatenatedText = allText.join(" ");
+      const prompt = `Summarize this theory in a teaching way: ${concatenatedText}.`;
+      await sendSummery(prompt,url,mTopic,mSubTopic,id);
     } catch (error) {
-        console.warn(
-            "Error fetching transcript, retrying with fallback...",
-            error
-        );
-        const fallbackPrompt = `Explain the JavaScript function subtopic of ${mTopic} with examples: ${subtop}. Please strictly avoid additional resources and images.`;
-        if (retries > 0) {
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            return sendTranscript(
-                url,
-                mTopic,
-                mSubTopic,
-                id,
-                subtop,
-                retries - 1,
-                delay * 2
-            );
-        } else {
-            toast.dismiss(id);
-            toast.error("Error in generating subtopic");
-            await sendSummery(fallbackPrompt, url, mTopic, mSubTopic, id);
-        }
+      console.warn("Error processing transcript response, retrying with fallback...", error);
+      const fallbackPrompt = `Explain me about this subtopic of ${mTopic} with examples: ${subtop}. Please strictly avoid additional resources and images.`;
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return sendTranscript(url,mTopic,mSubTopic,id,subtop,retries-1,delay*2);
+      } else {
+        await sendSummery(fallbackPrompt,url,mTopic,mSubTopic,id);
+      }
     }
+  } catch (error) {
+    console.warn("Error fetching transcript, retrying with fallback...", error);
+    const fallbackPrompt = `Explain me about this subtopic of ${mTopic} with examples: ${subtop}. Please strictly avoid additional resources and images.`;
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return sendTranscript(url,mTopic,mSubTopic,id,subtop,retries-1,delay*2); 
+    } else {
+      await sendSummery(fallbackPrompt,url,mTopic,mSubTopic,id);
+    }
+  }
 }
 
 async function sendSummery(
@@ -664,7 +639,7 @@ async function sendSummery(
   totalRetries = 0
 ) {
   const dataToSend = {
-      prompt: `Provide a summary in JavaScript context: ${prompt}`,
+    prompt: prompt,
   };
 
   try {
