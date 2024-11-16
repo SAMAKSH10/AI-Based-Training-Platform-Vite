@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import img from "@/assets/signin.svg";
 import { Flowbite, Navbar } from "flowbite-react";
 import { Button, Label } from "flowbite-react";
-import { name, websiteURL } from "../constants";
+import { mainname, name, subname, websiteURL } from "../constants";
 import DarkModeToggle from "../components/DarkModeToggle";
 import LogoComponent from "../components/LogoComponent";
 import { useNavigate } from "react-router-dom";
@@ -72,7 +72,7 @@ const SignIn = () => {
 
       // Send sign-in request to your server
       const res = await axiosInstance.post(postURL, { email, password, firebaseUid });
-
+      console.log(res.data);
       if (res.data.success) {
         showToast(res.data.message);
         sessionStorage.setItem("user", JSON.stringify(res.data.userData));
@@ -81,7 +81,17 @@ const SignIn = () => {
         sessionStorage.setItem("auth", true);
         sessionStorage.setItem("type", res.data.userData.type);
         sessionStorage.setItem("uid", res.data.userData.uid); // Use the updated uid
-        sessionStorage.setItem("apiKey", res.data.userData.apiKey);
+        sessionStorage.setItem("uapiKey",res.data.userData.unsplashApiKey);
+        sessionStorage.setItem("userapikey1", res.data.userData.userapikey1 || null);
+        sessionStorage.setItem("apiKey", res.data.userData.apiKey || null);
+        // Check if both userapikey1 and userapikey2 are null
+        if (!res.data.userData.userapikey1 && !res.data.userData.userapikey2) {
+          showToast("please fill out the api keys");
+        } else if (!res.data.userData.userapikey1) {
+          showToast("Gemini Key is not set.");
+        } else if (!res.data.userData.userapikey2) {
+          showToast("Unsplash Key is not set.");
+        }
         redirectHome();
       } else {
         showToast(res.data.message);
@@ -98,13 +108,14 @@ const SignIn = () => {
     <GoogleOAuthProvider clientId="<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>">
       <Flowbite>
         <div className="flex h-screen dark:bg-black no-scrollbar">
-          <div className="flex-1 overflow-y-auto no-scrollbar">
+          <div className="flex-1 overflow-y-auto no-scrollbar overflow-x-hidden">
             <Navbar fluid className="p-8 dark:bg-black">
               <Navbar.Brand href={websiteURL} className="ml-1">
                 <LogoComponent isDarkMode={storedTheme} />
-                <span className="self-center whitespace-nowrap text-2xl font-black dark:text-white ">
-                  {name}
-                </span>
+                <span className="self-center whitespace-nowrap text-2xl flex items-start justify-center flex-col font-black dark:text-white ">
+                <h1 className="font-black">{mainname}</h1>
+                <em className="text-sm font-semibold">{subname}</em>
+              </span>
               </Navbar.Brand>
               <DarkModeToggle />
             </Navbar>

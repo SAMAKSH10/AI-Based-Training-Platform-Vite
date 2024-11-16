@@ -17,6 +17,8 @@ import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import Quiz from "../quiz/Quiz";
 import Projects from "../ProjectSuggestion/Projects";
+import CourseLogoComponent from "../components/CourseLogoComponent";
+import axios from "axios";
 
 const Course = () => {
   const [userUID, setUserUID] = useState(sessionStorage.getItem("uid"));
@@ -47,7 +49,7 @@ const Course = () => {
   const CountDoneTopics = () => {
     let doneCount = 0;
     let totalTopics = 0;
-  
+
     jsonData[mainTopic.toLowerCase()].forEach((topic) => {
       topic.subtopics.forEach((subtopic) => {
         if (subtopic.done) {
@@ -62,26 +64,27 @@ const Course = () => {
       setIsCompleted(true);
       setQuizAvailable(true);
     }
-  
+
     // Add this: Update progress in the database
     updateProgressInDatabase(completionPercentage);
   };
-  
+
   // New function to update progress in the database
   const updateProgressInDatabase = async (progress) => {
     try {
-      const response = await axiosInstance.post('/api/updateProgress', {
+      const response = await axiosInstance.post("/api/updateProgress", {
         courseId: courseId,
         progress: progress,
-        completed: progress >= 100 // Add this line to send completion status
+        completed: progress >= 100, // Add this line to send completion status
       });
       if (response.data.success) {
-        console.log('Progress updated in database');
+        // console.log('Progress updated in database');
       } else {
-        console.error('Failed to update progress in database');
+        // console.error('Failed to update progress in database');
       }
     } catch (error) {
-      console.error('Error updating progress in database:', error);
+      console.error("Error updating progress in database:", error);
+      toast.error("Error updating progress"); // Error in updating the progress
     }
   };
 
@@ -117,6 +120,7 @@ const Course = () => {
         }
       } catch (error) {
         console.error("Error fetching project suggestions:", error);
+        toast.error("Error in project suggestions"); // toast error in project suggestion
       }
     }
   };
@@ -137,6 +141,7 @@ const Course = () => {
       return data.certificateUrl;
     } catch (error) {
       console.error("Error fetching certificate URL:", error);
+      toast.error("Error in generating certificate"); // Error in generating certificate
       return null;
     }
   };
@@ -336,7 +341,15 @@ const Course = () => {
     setMedia(type === "video & text course" ? youtube : image);
   };
 
-  async function sendPrompt(prompt, promptImage, topics, sub, id, retries = 3, delay = 1000) {
+  async function sendPrompt(
+    prompt,
+    promptImage,
+    topics,
+    sub,
+    id,
+    retries = 3,
+    delay = 1000
+  ) {
     const dataToSend = {
       prompt: prompt,
     };
@@ -344,61 +357,95 @@ const Course = () => {
       const postURL = "/api/generate";
       const res = await axiosInstance.post(postURL, dataToSend);
       const generatedText = res.data.text;
+      // console.log(generatedText)
       const htmlContent = generatedText;
-  
+
       // Attempt to parse and send image
       try {
         const parsedJson = htmlContent;
-        await sendImage(parsedJson,promptImage,topics,sub,id);
-        
+        await sendImage(parsedJson, promptImage, topics, sub, id);
       } catch (error) {
-        console.warn("Error in sendImage, retrying...",error);
+        console.warn("Error in sendImage, retrying...", error);
         if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return sendPrompt(prompt,promptImage,topics,sub,id,retries-1,delay*2);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return sendPrompt(
+            prompt,
+            promptImage,
+            topics,
+            sub,
+            id,
+            retries - 1,
+            delay * 2
+          );
         } else {
-          console.error("Failed to send prompt after multiple attempts:",error);
+          console.error(
+            "Failed to send prompt after multiple attempts:",
+            error
+          );
           throw error;
         }
       }
-    } catch(error) {
+    } catch (error) {
       console.warn("Error in sendPrompt, retrying...", error);
       if (retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return sendPrompt(prompt, promptImage, topics, sub, id, retries - 1, delay * 2); 
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return sendPrompt(
+          prompt,
+          promptImage,
+          topics,
+          sub,
+          id,
+          retries - 1,
+          delay * 2
+        );
       } else {
         console.error("Failed to send prompt after multiple attempts:", error);
+
         throw error;
       }
     }
   }
-  
 
-  async function sendImage(parsedJson, promptImage, topics, sub, id, retries = 3, delay = 1000) {
+  async function sendImage(
+    parsedJson,
+    promptImage,
+    topics,
+    sub,
+    id,
+    retries = 3,
+    delay = 1000
+  ) {
     const dataToSend = {
       prompt: promptImage,
     };
-  
+
     try {
       const postURL = "/api/image";
       const res = await axiosInstance.post(postURL, dataToSend);
-  
+
       const generatedText = res.data.url;
-      
+
       await sendData(generatedText, parsedJson, topics, sub, id);
-      
     } catch (error) {
       if (retries > 0) {
         console.warn(`Retrying in ${delay}ms... (${retries} attempts left)`);
-        await new Promise(resolve => setTimeout(resolve, delay)); // Wait before retrying
-        return sendImage(parsedJson,promptImage,topics,sub,id,retries-1,delay*2);
+        await new Promise((resolve) => setTimeout(resolve, delay)); // Wait before retrying
+        return sendImage(
+          parsedJson,
+          promptImage,
+          topics,
+          sub,
+          id,
+          retries - 1,
+          delay * 2
+        );
       } else {
-        console.error('Failed to send image after multiple attempts:', error);
+        console.error("Failed to send image after multiple attempts:", error);
+        toast.error("Failed to generate image"); // Toast Failed to generate image
         throw error; // If retries are over then throw the error
       }
     }
   }
-  
 
   async function sendData(image, theory, topics, sub, id) {
     const mTopic = jsonData[mainTopic.toLowerCase()].find(
@@ -484,7 +531,7 @@ const Course = () => {
         const response = await axiosInstance.post(postURL, dataToSend);
 
         if (i === contentChunks.length - 1) {
-          console.log("Course updated successfully");
+          // console.log("Course updated successfully");
           // Handle successful update (e.g., show a success message)
         }
       } catch (error) {
@@ -496,105 +543,177 @@ const Course = () => {
     }
   }
 
-async function sendVideo(query, mTopic, mSubTopic, id, subtop, retries = 3, delay = 1000) {
-  const dataToSend = {
-    prompt: query,
-  };
-  try {
-    const postURL = "/api/yt";
-    const res = await axiosInstance.post(postURL, dataToSend);
-    const generatedText = res.data.url;
-
-    //sending the transcript
-    await sendTranscript(generatedText, mTopic, mSubTopic, id, subtop);
-  
-  } catch (error) {
-    if (retries > 0) {
-      console.warn(`Retrying in ${delay}ms... (${retries} attempts left)`);
-      await new Promise(resolve => setTimeout(resolve, delay)); // Waiting before retrying
-      return sendVideo(query, mTopic, mSubTopic, id, subtop, retries - 1, delay * 2); // Exponential backoff
-    } else {
-      console.error('Failed to send video after multiple attempts:', error);
-      throw error; // If retries are over then throw the error
-    }
-  }
-}
-
-async function sendTranscript(url, mTopic, mSubTopic, id, subtop, retries = 3, delay = 1000) {
-  const dataToSend = {
-    prompt: url,
-  };
-  try {
-    const postURL = "/api/transcript";
-    const res = await axiosInstance.post(postURL, dataToSend);
-
-    // Process the response data
+  async function sendVideo(
+    query,
+    mTopic,
+    mSubTopic,
+    id,
+    subtop,
+    retries = 3,
+    delay = 1000
+  ) {
+    const dataToSend = {
+      prompt: query,
+    };
     try {
+      const postURL = "/api/yt";
+      const res = await axiosInstance.post(postURL, dataToSend);
       const generatedText = res.data.url;
-      const allText = generatedText.map((item) => item.text);
-      const concatenatedText = allText.join(" ");
-      const prompt = `Summarize this theory in a teaching way: ${concatenatedText}.`;
-      await sendSummery(prompt,url,mTopic,mSubTopic,id);
+
+      //sending the transcript
+      await sendTranscript(generatedText, mTopic, mSubTopic, id, subtop);
     } catch (error) {
-      console.warn("Error processing transcript response, retrying with fallback...", error);
-      const fallbackPrompt = `Explain me about this subtopic of ${mTopic} with examples: ${subtop}. Please strictly avoid additional resources and images.`;
       if (retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return sendTranscript(url,mTopic,mSubTopic,id,subtop,retries-1,delay*2);
+        console.warn(`Retrying in ${delay}ms... (${retries} attempts left)`);
+        await new Promise((resolve) => setTimeout(resolve, delay)); // Waiting before retrying
+        return sendVideo(
+          query,
+          mTopic,
+          mSubTopic,
+          id,
+          subtop,
+          retries - 1,
+          delay * 2
+        ); // Exponential backoff
       } else {
-        await sendSummery(fallbackPrompt,url,mTopic,mSubTopic,id);
+        console.error("Failed to send video after multiple attempts:", error);
+        toast.error("Failed to generate video"); // toast erorr in video
+        throw error; // If retries are over then throw the error
       }
     }
-  } catch (error) {
-    console.warn("Error fetching transcript, retrying with fallback...", error);
-    const fallbackPrompt = `Explain me about this subtopic of ${mTopic} with examples: ${subtop}. Please strictly avoid additional resources and images.`;
-    if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return sendTranscript(url,mTopic,mSubTopic,id,subtop,retries-1,delay*2); 
-    } else {
-      await sendSummery(fallbackPrompt,url,mTopic,mSubTopic,id);
-    }
   }
+
+  async function sendTranscript(
+    url,
+    mTopic,
+    mSubTopic,
+    id,
+    subtop,
+    retries = 3,
+    delay = 800
+) {
+    const dataToSend = {
+        prompt: url,
+    };
+    try {
+        const postURL = "/api/transcript";
+        const res = await axiosInstance.post(postURL, dataToSend);
+
+        // Process the response data
+        try {
+            const generatedText = res.data.url;
+            const allText = generatedText.map((item) => item.text);
+            const concatenatedText = allText.join(" ");
+            const prompt = `Summarize this theory in a teaching way, focusing on ${mTopic}: ${concatenatedText}.`;
+            await sendSummery(prompt, url, mTopic, mSubTopic, id);
+        } catch (error) {
+            console.warn(
+                "Error processing transcript response, retrying with fallback...",
+                error
+            );
+            const fallbackPrompt = `Explain the JavaScript function subtopic of ${mTopic} with examples: ${subtop}. Please strictly avoid additional resources and images.`;
+            if (retries > 0) {
+                await new Promise((resolve) => setTimeout(resolve, delay));
+                return sendTranscript(
+                    url,
+                    mTopic,
+                    mSubTopic,
+                    id,
+                    subtop,
+                    retries - 1,
+                    delay * 2
+                );
+            } else {
+                await sendSummery(fallbackPrompt, url, mTopic, mSubTopic, id);
+            }
+        }
+    } catch (error) {
+        console.warn(
+            "Error fetching transcript, retrying with fallback...",
+            error
+        );
+        const fallbackPrompt = `Provide a detailed explanation of the ${mTopic} topic, specifically focusing on the subtopic '${subtop}', with relevant examples. Please avoid including any additional resources, links, or images.`;
+        if (retries > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return sendTranscript(
+                url,
+                mTopic,
+                mSubTopic,
+                id,
+                subtop,
+                retries - 1,
+                delay * 2
+            );
+        } else {
+            toast.dismiss(id);
+            toast.error("Error in generating subtopic");
+            await sendSummery(fallbackPrompt, url, mTopic, mSubTopic, id);
+        }
+    }
 }
 
-
-async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, delay = 1000) {
+async function sendSummery(
+  prompt,
+  url,
+  mTopic,
+  mSubTopic,
+  id,
+  retries = 3,
+  delay = 1000,
+  totalRetries = 0
+) {
   const dataToSend = {
-    prompt: prompt,
+      prompt: `Provide a summary in ${mTopic} context: ${prompt}`,
   };
 
   try {
-    const postURL = "/api/generate";
-    const res = await axiosInstance.post(postURL, dataToSend);
+      const postURL = "/api/generate";
+      const res = await axiosInstance.post(postURL, dataToSend);
 
-    // Process the generated summary text
-    try {
-      const generatedText = res.data.text;
-      const htmlContent = generatedText;
-      const parsedJson = htmlContent;  // Process the HTML content
+      // Process the generated summary text
+      try {
+          const generatedText = res.data.text;
+          const htmlContent = generatedText;
+          const parsedJson = htmlContent;
 
-      await sendDataVideo(url, parsedJson, mTopic, mSubTopic, id);
-      
-    } catch (error) {
-      console.warn("Error processing summary response, retrying...", error);
-      if (retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, delay));  
-        return sendSummery(prompt, url, mTopic, mSubTopic, id, retries - 1, delay * 2);
-      } else {
-        throw new Error("Failed to process summary after multiple retries."); 
+          await sendDataVideo(url, parsedJson, mTopic, mSubTopic, id);
+      } catch (error) {
+          console.warn("Error processing summary response, retrying...", error);
+          if (retries > 0) {
+              await new Promise((resolve) => setTimeout(resolve, delay));
+              return sendSummery(
+                  prompt,
+                  url,
+                  mTopic,
+                  mSubTopic,
+                  id,
+                  retries - 1,
+                  delay * 2,
+                  totalRetries + 1 // Increment total retries
+              );
+          } else {
+              throw new Error("Failed to process summary after multiple retries.");
+          }
       }
-    }
   } catch (error) {
-    console.warn("Error fetching summary, retrying...", error);
-    if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));  
-      return sendSummery(prompt, url, mTopic, mSubTopic, id, retries - 1, delay * 2);  
-    } else {
-      throw new Error("Failed to generate summary after multiple retries.");  
-    }
+      console.warn("Error fetching summary, retrying...", error);
+      if (retries > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return sendSummery(
+prompt,
+              url,
+              mTopic,
+              mSubTopic,
+              id,
+              retries - 1,
+              delay * 2,
+              totalRetries + 1 // Increment total retries
+          );
+      } else {
+          throw new Error("Failed to generate summary after multiple retries.");
+      }
   }
 }
-
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -639,8 +758,8 @@ async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, dela
     const dataToSend = { prompt: mainPrompt };
     const url = "/api/chat";
 
-    console.log("Sending request to:", url);
-    console.log("Request data:", dataToSend);
+    // console.log("Sending request to:", url);
+    // console.log("Request data:", dataToSend);
 
     const maxRetries = 3;
     let attempts = 0;
@@ -751,24 +870,30 @@ async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, dela
             </Sidebar.ItemGroup>
           ))}
           {isComplete && (
-              <Sidebar.ItemGroup>
-                
-                <button
-                  onClick={() => {setShowQuiz(true); setShowProjects(false)}}
-                  className="text-start text-base w-full px-3 py-2 font-bold text-white dark:text-white bg-gray-900 rounded-lg flex items-center justify-between"
-                >
-                  Take Quiz
-                  <div className="h-4 w-4 bg-red-500 rounded-full animate-pulse"></div>
-                </button>
+            <Sidebar.ItemGroup>
+              <button
+                onClick={() => {
+                  setShowQuiz(true);
+                  setShowProjects(false);
+                }}
+                className="text-start text-base w-full px-3 py-2 font-bold text-white dark:text-white bg-gray-900 rounded-lg flex items-center justify-between"
+              >
+                Take Quiz
+                <div className="h-4 w-4 bg-red-500 rounded-full animate-pulse"></div>
+              </button>
 
-                <div className="w-full bg-black/70 dark:bg-white/70 h-[1px]"></div>
-                <button 
-                onClick={() => {setShowProjects(true); setShowQuiz(false)}}
-                className="text-start text-base w-full px-3 py-2 font-bold text-white dark:text-white bg-gray-900 rounded-lg flex items-center justify-between mb-10">
-                  Projects
-                </button>
-              </Sidebar.ItemGroup>
-            )}
+              <div className="w-full bg-black/70 dark:bg-white/70 h-[1px]"></div>
+              <button
+                onClick={() => {
+                  setShowProjects(true);
+                  setShowQuiz(false);
+                }}
+                className="text-start text-base w-full px-3 py-2 font-bold text-white dark:text-white bg-gray-900 rounded-lg flex items-center justify-between mb-10"
+              >
+                Projects
+              </button>
+            </Sidebar.ItemGroup>
+          )}
         </div>
       );
     } catch (error) {
@@ -938,7 +1063,7 @@ async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, dela
                   isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                 }`}
               >
-                <LogoComponent isDarkMode={storedTheme} />
+                <CourseLogoComponent isDarkMode={storedTheme} />
                 <Sidebar.Items className="mt-6">
                   {jsonData &&
                     renderTopicsAndSubtopics(jsonData[mainTopic.toLowerCase()])}
@@ -948,18 +1073,18 @@ async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, dela
               <div className="px-8 bg-white dark:bg-black pt-5">
                 {/* sm & md */}
                 {showQuiz ? (
-                    <div className="w-full min-h-[90vh] bg-white  dark:bg-black flex items-center justify-center">
-                      <Quiz
-                        courseTitle={mainTopic}
-                        onCompletion={() => {
-                          // Handle quiz completion
-                          console.log(`Quiz completed`);
-                          // You might want to update some state or show a completion message
-                        }}
-                        courseId={courseId}
-                        userId={userUID}
-                      />
-                    </div>
+                  <div className="w-full min-h-[90vh] bg-white  dark:bg-black flex items-center justify-center">
+                    <Quiz
+                      courseTitle={mainTopic}
+                      onCompletion={() => {
+                        // Handle quiz completion
+                        // console.log(`Quiz completed`);
+                        // You might want to update some state or show a completion message
+                      }}
+                      courseId={courseId}
+                      userId={userUID}
+                    />
+                  </div>
                 ) : showProjects ? (
                   <Projects courseTitle={mainTopic} userId={userUID} />
                 ) : (
@@ -970,12 +1095,16 @@ async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, dela
                     <div className="overflow-hidden mt-5 text-black dark:text-white text-base pb-10 max-w-full">
                       {type === "video & text course" ? (
                         <div>
-                          <YouTube
-                            key={media}
-                            className="mb-5"
-                            videoId={media}
-                            opts={{}}
-                          />
+                          <div className="relative aspect-video w-full max-w-[100vw] mb-5">
+                            <iframe
+                              src={`https://www.youtube.com/embed/${media}`}
+                              title="YouTube video player"
+                              className="absolute top-0 left-0 w-full h-full"
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            ></iframe>
+                          </div>
                           <StyledText text={theory} />
                         </div>
                       ) : (
@@ -996,7 +1125,7 @@ async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, dela
           </div>
           <div className="flex bg-white dark:bg-black flex-row overflow-y-auto h-screen max-md:hidden">
             <Sidebar theme={storedTheme} aria-label="Default sidebar example">
-              <LogoComponent isDarkMode={storedTheme} />
+              <CourseLogoComponent isDarkMode={storedTheme} />
               <Sidebar.Items className="mt-6">
                 {jsonData &&
                   renderTopicsAndSubtopics(jsonData[mainTopic.toLowerCase()])}
@@ -1043,18 +1172,18 @@ async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, dela
               </Navbar>
               <div className="px-8 bg-white dark:bg-black pt-5">
                 {showQuiz ? (
-                    <div className="w-full min-h-[80vh] bg-white dark:bg-black flex items-center justify-center">
-                      <Quiz
-                        courseTitle={mainTopic}
-                        onCompletion={() => {
-                          // Handle quiz completion
-                          console.log(`Quiz completed`);
-                          // You might want to update some state or show a completion message
-                        }}
-                        courseId={courseId}
-                        userId={userUID}
-                      />
-                    </div>
+                  <div className="w-full min-h-[80vh] bg-white dark:bg-black flex items-center justify-center">
+                    <Quiz
+                      courseTitle={mainTopic}
+                      onCompletion={() => {
+                        // Handle quiz completion
+                        // console.log(`Quiz completed`);
+                        // You might want to update some state or show a completion message
+                      }}
+                      courseId={courseId}
+                      userId={userUID}
+                    />
+                  </div>
                 ) : showProjects ? (
                   <Projects courseTitle={mainTopic} userId={userUID} />
                 ) : (
@@ -1062,15 +1191,20 @@ async function sendSummery(prompt, url, mTopic, mSubTopic, id, retries = 3, dela
                     <p className="font-black text-black dark:text-white text-xl">
                       {selected}
                     </p>
-                    <div className="overflow-hidden mt-5 text-black dark:text-white text-base pb-10 max-w-full">
+                    <div className="overflow-hidden  mt-5 text-black dark:text-white text-base pb-10 max-w-full">
                       {type === "video & text course" ? (
-                        <div>
-                          <YouTube
-                            key={media}
-                            className="mb-5"
-                            videoId={media}
-                            opts={{}}
-                          />
+                        <div className="w-full">
+                          <div className="relative aspect-video w-full max-w-[60vw] max-h-[60vh] mb-5">
+                            <iframe
+                              src={`https://www.youtube.com/embed/${media}`}
+                              title="YouTube video player"
+                              className="absolute top-0 left-0 w-full h-full"
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            ></iframe>
+                          </div>
+
                           <StyledText text={theory} />
                         </div>
                       ) : (
